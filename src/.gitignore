@@ -1,0 +1,18 @@
+# Generated files
+*.generated.ts
+*.generated.tsx
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log 
