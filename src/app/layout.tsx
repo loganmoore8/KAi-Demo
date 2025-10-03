@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { RouteProvider } from "@/providers/router-provider";
 import { Theme } from "@/providers/theme";
+import { Footer } from "@/components/marketing/footer/footer";
 import "@/styles/globals.css";
 import { cx } from "@/utils/cx";
 
@@ -12,8 +13,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-    title: "Guided Safety — Case Management for Impact Response Teams",
-    description: "One place for your team to manage cases, track response times, and stay mission-ready when every second counts.",
+    title: "KAi — Voice Automation That Works Like Magic",
+    description: "Kai brings human-like AI to every call—cutting costs, speeding responses, and elevating customer experiences.",
     icons: {
         icon: '/favicon.ico',
     },
@@ -33,7 +34,10 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body className={cx(inter.variable, "bg-primary antialiased")}>
                 <RouteProvider>
-                    <Theme>{children}</Theme>
+                    <Theme>
+                        {children}
+                        <Footer />
+                    </Theme>
                 </RouteProvider>
             </body>
         </html>

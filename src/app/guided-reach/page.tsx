@@ -13,17 +13,62 @@ export default function GuidedReachPage() {
     const [scrollPosition, setScrollPosition] = useState(0);
     const [featuresActiveIndex, setFeaturesActiveIndex] = useState(0);
     const [isFeaturesSectionActive, setIsFeaturesSectionActive] = useState(false);
+    const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
     const carouselRef = useRef<HTMLDivElement>(null);
     const featuresSectionRef = useRef<HTMLDivElement>(null);
     const lastWheelTime = useRef<number>(0);
     const lastScrollY = useRef<number>(0);
+    const isScrolling = useRef<boolean>(false);
+    const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Audio handling function
+    const handleAudioPlay = (audioFile: string) => {
+        if (playingAudio === audioFile) {
+            // If this audio is playing, pause it
+            const audio = document.getElementById(audioFile) as HTMLAudioElement;
+            if (audio) {
+                audio.pause();
+                setPlayingAudio(null);
+            }
+        } else {
+            // Stop any currently playing audio
+            if (playingAudio) {
+                const currentAudio = document.getElementById(playingAudio) as HTMLAudioElement;
+                if (currentAudio) {
+                    currentAudio.pause();
+                }
+            }
+            
+            // Play the new audio
+            const audio = document.getElementById(audioFile) as HTMLAudioElement;
+            if (audio) {
+                audio.play();
+                setPlayingAudio(audioFile);
+            }
+        }
+    };
+
+    // Video handling function
+    const handleVideoPlay = () => {
+        const video = document.getElementById('hero-video') as HTMLVideoElement;
+        if (video) {
+            if (isVideoPlaying) {
+                video.pause();
+                setIsVideoPlaying(false);
+            } else {
+                video.play();
+                setIsVideoPlaying(true);
+            }
+        }
+    };
 
     // Social proof card data
     const socialProofCards = [
-        { name: "Sarah", message: "I need to reschedule my appointment" },
-        { name: "Michael", message: "Can you help me with my billing question?" },
-        { name: "Emma", message: "I'd like to update my account information" },
-        { name: "David", message: "What are your business hours?" }
+        { name: "Sarah", message: "I need to reschedule my appointment", avatar: "/healthcare-demo.png" },
+        { name: "Michael", message: "Can you help me with my billing question?", avatar: "/banking-demo.png" },
+        { name: "Emma", message: "I'd like to update my account information", avatar: "/customer-service-demo.png" },
+        { name: "David", message: "What are your business hours?", avatar: "/healthcare-demo.png" }
     ];
 
     // Smooth continuous carousel animation
@@ -44,95 +89,179 @@ export default function GuidedReachPage() {
         requestAnimationFrame(animate);
     }, []);
 
-    // Features section scroll hijacking effect
+    // Robust scroll hijacking for features section
     useEffect(() => {
-        const handleWheel = (e: WheelEvent) => {
-            if (!featuresSectionRef.current) return;
+        const FEATURES_COUNT = 4;
+        let isHijacking = false;
+        let lastScrollTime = 0;
+        let scrollTimeout: NodeJS.Timeout | null = null;
+        let savedScrollPosition = 0;
+        let lastScrollY = window.pageYOffset;
 
+        const isSectionCentered = () => {
+            if (!featuresSectionRef.current) return false;
+            
             const rect = featuresSectionRef.current.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
-            const sectionCenter = rect.top + (rect.height / 2);
             const viewportCenter = viewportHeight / 2;
-            const isCentered = Math.abs(sectionCenter - viewportCenter) < 100;
             
-            if (!isCentered) return;
-
-            e.preventDefault();
-            e.stopPropagation();
+            const sectionTop = rect.top;
+            const sectionBottom = rect.bottom;
+            const sectionHeight = rect.height;
+            const sectionCenter = sectionTop + (sectionHeight / 2);
             
-            // Debounce rapid scroll events
-            const now = Date.now();
-            if (now - lastWheelTime.current < 150) {
-                return; // Ignore events that are too close together
-            }
-            lastWheelTime.current = now;
+            // Determine scroll direction
+            const currentScrollY = window.pageYOffset;
+            const isScrollingDown = currentScrollY > lastScrollY;
+            lastScrollY = currentScrollY;
             
-            const delta = e.deltaY;
-            const featuresCount = 4; // Number of features in the first section
+            // Adjust tolerance based on scroll direction
+            // When scrolling down, require more precise centering
+            const tolerance = isScrollingDown ? 20 : 50;
+            const centerDistance = Math.abs(sectionCenter - viewportCenter);
+            const isCentered = centerDistance < tolerance;
             
-            if (delta > 0) {
-                // Scrolling down - move to next feature
-                setFeaturesActiveIndex(prev => {
-                    const nextIndex = prev + 1;
-                    if (nextIndex >= featuresCount) {
-                        // Reached the end, allow one more scroll to continue
-                        setTimeout(() => {
-                            window.scrollBy(0, 100);
-                        }, 50);
-                        return prev;
-                    }
-                    return nextIndex;
-                });
-            } else {
-                // Scrolling up - move to previous feature
-                setFeaturesActiveIndex(prev => {
-                    const prevIndex = prev - 1;
-                    if (prevIndex < 0) {
-                        // At the beginning, allow one more scroll to continue
-                        setTimeout(() => {
-                            window.scrollBy(0, -100);
-                        }, 50);
-                        return prev;
-                    }
-                    return prevIndex;
-                });
-            }
+            // Debug logging
+            console.log('Scroll direction:', isScrollingDown ? 'down' : 'up', 'Section center:', sectionCenter, 'Viewport center:', viewportCenter, 'Distance:', centerDistance, 'Tolerance:', tolerance, 'Is centered:', isCentered);
+            
+            return isCentered;
         };
 
-        const handleScroll = () => {
-            if (!featuresSectionRef.current) return;
+        const handleWheel = (e: WheelEvent) => {
+            const now = Date.now();
+            
+            // Only process if section is centered and we're not in a rapid scroll sequence
+            if (!isSectionCentered() || now - lastScrollTime < 100) {
+                return;
+            }
 
-            const rect = featuresSectionRef.current.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const sectionCenter = rect.top + (rect.height / 2);
-            const viewportCenter = viewportHeight / 2;
-            const isCentered = Math.abs(sectionCenter - viewportCenter) < 100;
-            
-            const currentScrollY = window.scrollY;
-            const scrollDirection = currentScrollY > lastScrollY.current ? 'down' : 'up';
-            lastScrollY.current = currentScrollY;
-            
-            if (isCentered && !isFeaturesSectionActive) {
+            // If we're not currently hijacking, start hijacking
+            if (!isHijacking) {
+                isHijacking = true;
                 setIsFeaturesSectionActive(true);
-                // Set appropriate starting index based on scroll direction
-                if (scrollDirection === 'up') {
-                    setFeaturesActiveIndex(3); // Start from the last feature when scrolling up
+                // Save the current scroll position when hijacking starts
+                savedScrollPosition = window.pageYOffset;
+                console.log('Starting hijacking at scroll position:', savedScrollPosition);
+            }
+
+            // Only prevent default if we're actually hijacking
+            if (isHijacking) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            lastScrollTime = now;
+
+            const delta = e.deltaY;
+            const isScrollingDown = delta > 0;
+            
+            setFeaturesActiveIndex(prev => {
+                let newIndex = prev;
+                
+                if (isScrollingDown) {
+                    newIndex = Math.min(prev + 1, FEATURES_COUNT - 1);
+                    
+                    // If at last feature and trying to scroll down, exit hijacking
+                    if (newIndex === FEATURES_COUNT - 1 && prev === FEATURES_COUNT - 1) {
+                        exitHijacking('down');
+                        return prev;
+                    }
                 } else {
-                    setFeaturesActiveIndex(0); // Start from the first feature when scrolling down
+                    newIndex = Math.max(prev - 1, 0);
+                    
+                    // If at first feature and trying to scroll up, exit hijacking
+                    if (newIndex === 0 && prev === 0) {
+                        exitHijacking('up');
+                        return prev;
+                    }
                 }
-            } else if (!isCentered && isFeaturesSectionActive) {
+                
+                return newIndex;
+            });
+        };
+
+        const handleScroll = (e: Event) => {
+            // If we're hijacking, prevent scroll movement but avoid jitter
+            if (isHijacking && !scrollTimeout) {
+                e.preventDefault();
+                // Use requestAnimationFrame to avoid jitter
+                requestAnimationFrame(() => {
+                    if (isHijacking) {
+                        window.scrollTo(0, savedScrollPosition);
+                    }
+                });
+                return;
+            }
+            
+            // Don't interfere if we're in the exit timeout period
+            if (scrollTimeout) return;
+            
+            const centered = isSectionCentered();
+            
+            // If section becomes centered and we're not hijacking, start hijacking
+            if (centered && !isHijacking) {
+                isHijacking = true;
+                setIsFeaturesSectionActive(true);
+                // Save the current scroll position when hijacking starts
+                savedScrollPosition = window.pageYOffset;
+                console.log('Starting hijacking via scroll detection at position:', savedScrollPosition);
+                
+                // Set initial index based on scroll position
+                const rect = featuresSectionRef.current?.getBoundingClientRect();
+                if (rect) {
+                    const sectionTop = rect.top;
+                    const sectionHeight = rect.height;
+                    const viewportCenter = window.innerHeight / 2;
+                    
+                    const sectionProgress = Math.max(0, Math.min(1, 
+                        (viewportCenter - sectionTop) / sectionHeight
+                    ));
+                    
+                    const initialIndex = Math.floor(sectionProgress * FEATURES_COUNT);
+                    setFeaturesActiveIndex(Math.max(0, Math.min(initialIndex, FEATURES_COUNT - 1)));
+                }
+            }
+            // If section is no longer centered and we're hijacking, stop hijacking
+            else if (!centered && isHijacking) {
+                isHijacking = false;
                 setIsFeaturesSectionActive(false);
             }
         };
 
+        const exitHijacking = (direction: 'up' | 'down') => {
+            isHijacking = false;
+            setIsFeaturesSectionActive(false);
+            
+            // Clear any existing timeout
+            if (scrollTimeout) {
+                clearTimeout(scrollTimeout);
+            }
+            
+            // Scroll in the appropriate direction
+            const scrollAmount = direction === 'down' ? 400 : -400;
+            window.scrollBy({ 
+                top: scrollAmount, 
+                behavior: 'smooth' 
+            });
+            
+            // Prevent re-hijacking for a short period
+            scrollTimeout = setTimeout(() => {
+                scrollTimeout = null;
+            }, 1000);
+        };
+
+        // Add event listeners
         document.addEventListener('wheel', handleWheel, { passive: false });
-        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('scroll', handleScroll, { passive: false });
         
         return () => {
             document.removeEventListener('wheel', handleWheel);
             window.removeEventListener('scroll', handleScroll);
+            if (scrollTimeout) {
+                clearTimeout(scrollTimeout);
+            }
         };
-    }, [isFeaturesSectionActive]);
+    }, []);
     return (
         <div className="flex min-h-screen flex-col bg-primary">
             <Header />
@@ -145,31 +274,29 @@ export default function GuidedReachPage() {
 							{/* Heading and supporting text */}
 							<div className="flex flex-col gap-[24px] items-center max-w-[1024px] w-full">
 								<div className="flex flex-col gap-[16px] items-center w-full">
-									<div className="w-full text-center text-[#772917] text-[60px] leading-[72px] tracking-[-1.2px] font-semibold">
-										High-performing remote teams.
-										<br />
-										The future of work.
-									</div>
-									<div className="w-full max-w-[768px] text-center text-[#ba3a14] text-[20px] leading-[30px]">
-										Powerful, self-serve team engagement tools and analytics. Supercharge your managers & keep employees engaged from anywhere.
-									</div>
+										<div className="w-full text-center text-[#772917] text-[60px] leading-[72px] tracking-[-1.2px] font-semibold">
+											Voice automation that works like magic.
+										</div>
+										<div className="w-full max-w-[768px] text-center text-[#ba3a14] text-[20px] leading-[30px]">
+											KAi brings human-like AI to every call—cutting costs, speeding responses, and elevating customer experiences.
+										</div>
 								</div>
 								{/* Actions */}
 								<div className="flex gap-[12px] items-start">
-									<button className="relative rounded-[8px] bg-[#e04f16]">
-										<div className="flex items-center justify-center gap-[6px] overflow-clip px-[18px] py-[12px]">
-											<span className="text-white text-[16px] leading-[24px] font-semibold">Talk to sales</span>
-										</div>
-										<div className="pointer-events-none absolute inset-0 shadow-[0px_0px_0px_1px_inset_rgba(10,13,18,0.18),0px_-2px_0px_0px_inset_rgba(10,13,18,0.05)]" />
-										<div aria-hidden className="pointer-events-none absolute inset-0 rounded-[8px] border-2 border-[rgba(255,255,255,0.12)] shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)]" />
-									</button>
+											<Button
+												color="primary"
+												size="lg"
+												href="/pricing"
+											>
+												Talk to sales
+											</Button>
 								</div>
 							</div>
 
 						{/* Social proof chat items with edge fade */}
-						<div className="w-full px-0 py-[38px] mb-[64px] relative">
+						<div className="w-full px-0 pb-[30px] mb-[64px] relative">
 							<div className="mx-auto max-w-[1280px] px-[32px] relative">
-								<div className="flex w-full justify-center gap-[24px] relative overflow-hidden">
+								<div className="flex w-full justify-center gap-[24px] relative overflow-hidden min-h-[150px] items-center">
 									{/* Gradient masks */}
 									<div className="absolute inset-y-0 left-0 w-[15%] bg-gradient-to-r from-[#fef6ee] to-transparent pointer-events-none z-10" />
 									<div className="absolute inset-y-0 right-0 w-[15%] bg-gradient-to-l from-[#fef6ee] to-transparent pointer-events-none z-10" />
@@ -192,8 +319,12 @@ export default function GuidedReachPage() {
 												>
 													<div aria-hidden className="absolute border border-[rgba(0,0,0,0.08)] border-solid inset-[-1px] pointer-events-none rounded-[13px]" />
 													<div className="basis-0 content-stretch flex gap-[12px] grow h-[64px] items-center min-h-px min-w-px relative shrink-0">
-														<div className="pointer-events-none relative rounded-[9999px] shrink-0 size-[40px]">
-															<Avatar size="md" />
+														<div className="pointer-events-none relative rounded-[9999px] shrink-0 size-[40px] overflow-hidden">
+															<img 
+																src={cardData.avatar} 
+																alt={cardData.name}
+																className="w-full h-full object-cover object-[50%_30%] scale-110"
+															/>
 														</div>
 														<div className="basis-0 content-stretch flex flex-col gap-[4px] grow items-start min-h-px min-w-px relative shrink-0">
 															<div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full">
@@ -240,19 +371,33 @@ export default function GuidedReachPage() {
 			<section className="box-border flex flex-col items-center px-0 py-0 relative shrink-0 w-full z-10">
 				<div className="box-border flex flex-col items-start max-w-[1280px] px-[32px] py-0 relative shrink-0 w-full">
 					<div className="flex flex-col items-center relative shrink-0 w-full">
-						<button className="aspect-[560/315] cursor-pointer max-h-[540px] max-w-[960px] relative rounded-[12px] shrink-0 w-full">
-							<img 
-								alt="" 
-								className="absolute inset-0 max-w-none object-50%-50% object-cover pointer-events-none rounded-[12px] size-full" 
-								src="/images/mockup-placeholder.svg" 
-							/>
-							<div className="aspect-[560/315] overflow-clip relative size-full">
-								<div className="absolute bg-gradient-to-b bottom-0 box-border content-stretch flex flex-col from-[rgba(0,0,0,0)] items-start left-0 pb-[24px] pt-[48px] px-[32px] right-0 to-[rgba(0,0,0,0.3)]">
-									{/* Video controls overlay */}
-                            </div>
-                        </div>
+						<div className="aspect-[560/315] max-h-[540px] max-w-[960px] relative rounded-[12px] shrink-0 w-full group">
+							<video 
+								id="hero-video"
+								className="absolute inset-0 max-w-none object-cover rounded-[12px] size-full" 
+								controls
+								preload="metadata"
+								onPlay={() => setIsVideoPlaying(true)}
+								onPause={() => setIsVideoPlaying(false)}
+								onEnded={() => setIsVideoPlaying(false)}
+							>
+								<source src="/KAi ad v1.mp4" type="video/mp4" />
+								Your browser does not support the video tag.
+							</video>
+							{!isVideoPlaying && (
+								<button 
+									onClick={handleVideoPlay}
+									className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors rounded-[12px] z-10"
+								>
+									<div className="size-20 rounded-full bg-brand-solid flex items-center justify-center shadow-lg hover:bg-brand-solid_hover transition-colors">
+										<svg className="size-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+											<path d="M8 5v14l11-7z"/>
+										</svg>
+									</div>
+								</button>
+							)}
 							<div aria-hidden className="absolute border-[0.5px] border-[rgba(0,0,0,0.1)] border-solid inset-0 pointer-events-none rounded-[12px] shadow-[0px_32px_64px_-12px_rgba(10,13,18,0.14),0px_5px_5px_-2.5px_rgba(10,13,18,0.04)]" />
-						</button>
+						</div>
                     </div>
                 </div>
             </section>
@@ -263,56 +408,64 @@ export default function GuidedReachPage() {
                 <div className="mx-auto max-w-container px-8">
                     <div className="flex flex-col max-w-[768px]">
                         <div className="flex flex-col gap-2 md:gap-3">
-                            <h2 className="text-display-md font-semibold text-primary tracking-tight">Voice automation that customers love</h2>
+                            <h2 className="text-[60px] font-semibold text-primary tracking-[-1.2px] leading-[72px] relative">
+                                Voice automation that customers
+                                <span className="relative text-[#e04f16]">
+                                    {" "}love
+                                    <img 
+                                        src="/Accent_02.svg" 
+                                        alt="" 
+                                        className="absolute -top-2 -right-8 w-[38px] h-[42px]"
+                                        style={{ filter: 'brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%)' }}
+                                    />
+                                </span>
+                            </h2>
                         </div>
-                        <p className="text-xl text-tertiary mt-3 md:mt-4">
-                            Human-like calls with memory, live knowledge sync, and context-rich handoffs—on your stack, no rip-and-replace.
-                        </p>
                     </div>
 
                     <div className="mt-16 grid grid-cols-1 gap-16 md:grid-cols-2 md:items-center md:min-h-[560px]">
                         <div className="flex flex-col max-w-[560px]">
                             <div className={`pl-6 pr-0 py-4 border-l-4 ${featuresActiveIndex === 0 ? "border-brand" : "border-tertiary"} transition-colors duration-200 ease-out`}>
                                 <div className="flex flex-col gap-1">
-                                    <div className="text-xl font-semibold text-primary">Conversations that feel human</div>
-                                    <div className="text-md text-tertiary">Natural speech, interruptions, memory, and guardrails. No scripts.</div>
+                                    <div className="text-[24px] font-semibold text-primary leading-[32px]">Conversations that feel human</div>
+                                    <div className="text-[20px] text-tertiary leading-[30px]">Natural speech, interruptions, memory, and guardrails. No scripts.</div>
                                 </div>
                                 <div className={`transition-all duration-200 ease-out ${featuresActiveIndex === 0 ? "mt-2 opacity-100 translate-y-0" : "mt-0 h-0 opacity-0 -translate-y-1 pointer-events-none overflow-hidden"}`}>
-                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight}>Learn more</Button>
+                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="text-[20px]" href="/pricing">Learn more</Button>
                                 </div>
                             </div>
                             <div className={`pl-6 pr-0 py-4 border-l-4 ${featuresActiveIndex === 1 ? "border-brand" : "border-tertiary"} transition-colors duration-200 ease-out`}>
                                 <div className="flex flex-col gap-1">
-                                    <div className="text-xl font-semibold text-primary">Trained on your knowledge</div>
-                                    <div className="text-md text-tertiary">Sync help centers, docs, and past transcripts. Always up to date.</div>
+                                    <div className="text-[24px] font-semibold text-primary leading-[32px]">Trained on your knowledge</div>
+                                    <div className="text-[20px] text-tertiary leading-[30px]">Sync help centers, docs, and past transcripts. Always up to date.</div>
                                 </div>
                                 <div className={`transition-all duration-200 ease-out ${featuresActiveIndex === 1 ? "mt-2 opacity-100 translate-y-0" : "mt-0 h-0 opacity-0 -translate-y-1 pointer-events-none overflow-hidden"}`}>
-                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight}>Learn more</Button>
+                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="text-[20px]" href="/pricing">Learn more</Button>
                                 </div>
                             </div>
                             <div className={`pl-6 pr-0 py-4 border-l-4 ${featuresActiveIndex === 2 ? "border-brand" : "border-tertiary"} transition-colors duration-200 ease-out`}>
                                 <div className="flex flex-col gap-1">
-                                    <div className="text-xl font-semibold text-primary">Smart handoffs</div>
-                                    <div className="text-md text-tertiary">Warm-transfer to agents with full context and intent.</div>
+                                    <div className="text-[24px] font-semibold text-primary leading-[32px]">Smart handoffs</div>
+                                    <div className="text-[20px] text-tertiary leading-[30px]">Warm-transfer to agents with full context and intent.</div>
                                 </div>
                                 <div className={`transition-all duration-200 ease-out ${featuresActiveIndex === 2 ? "mt-2 opacity-100 translate-y-0" : "mt-0 h-0 opacity-0 -translate-y-1 pointer-events-none overflow-hidden"}`}>
-                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight}>Learn more</Button>
+                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="text-[20px]" href="/pricing">Learn more</Button>
                                 </div>
                             </div>
                             <div className={`pl-6 pr-0 py-4 border-l-4 ${featuresActiveIndex === 3 ? "border-brand" : "border-tertiary"} transition-colors duration-200 ease-out`}>
                                 <div className="flex flex-col gap-1">
-                                    <div className="text-xl font-semibold text-primary">Works on your stack</div>
-                                    <div className="text-md text-tertiary">Connect to any telephony or contact center platform. Keep your tools.</div>
+                                    <div className="text-[24px] font-semibold text-primary leading-[32px]">Works on your stack</div>
+                                    <div className="text-[20px] text-tertiary leading-[30px]">Connect to any telephony or contact center platform. Keep your tools.</div>
                                 </div>
                                 <div className={`transition-all duration-200 ease-out ${featuresActiveIndex === 3 ? "mt-2 opacity-100 translate-y-0" : "mt-0 h-0 opacity-0 -translate-y-1 pointer-events-none overflow-hidden"}`}>
-                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight}>Learn more</Button>
+                                    <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="text-[20px]" href="/pricing">Learn more</Button>
                                 </div>
                             </div>
                         </div>
 
                         <div className="relative ml-auto h-[560px] w-[560px]">
                             {/* Brand gradient square behind the phone */}
-                            <div className="absolute inset-0 [background:linear-gradient(26.5deg,var(--color-brand-800),var(--color-brand-700))]" />
+                            <div className="absolute inset-0 [background:linear-gradient(26.5deg,#772917,#772917)]" />
                             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-[400.206px] w-[429.398px]">
                                 <img src="/images/conversations.png" alt="Conversations"
                                      className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ease-out ${featuresActiveIndex === 0 ? "opacity-100" : "opacity-0"}`} />
@@ -328,18 +481,27 @@ export default function GuidedReachPage() {
                 </div>
             </section>
 
-            {/* Hear Kai in Action section */}
-            <section className="bg-gradient-to-b from-white via-brand-50/80 to-white px-0 py-48">
+            {/* Hear KAi in Action section */}
+            <section className="bg-gradient-to-b from-white via-white to-[#fef6ee] px-0 py-[120px]">
                 <div className="mx-auto max-w-[1280px] px-[32px] relative z-10">
                     <div className="flex flex-col gap-[32px] items-center">
                         <div className="flex flex-col gap-[20px] items-center max-w-[768px]">
                             <div className="flex flex-col gap-[12px] items-center w-full">
-                                <h2 className="text-[36px] font-semibold text-[#181d27] tracking-[-0.72px] leading-[44px] text-center w-full">
-                                    Hear Kai in action
-                                </h2>
+                                <div className="relative">
+                                    <h2 className="text-[60px] font-semibold text-[#181d27] tracking-[-1.2px] leading-[72px] text-center w-full">
+                                        Hear <span className="text-[#e04f16]">KAi</span> in action
+                                    </h2>
+                                    <div className="absolute -top-2 -right-8">
+                                        <svg width="38" height="42" viewBox="0 0 51 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M34.1806 51.7952C38.9806 50.4482 44.006 49.7687 48.881 49.1462C49.931 49.0157 50.9058 49.744 50.9808 50.77C51.1308 51.7967 50.3804 52.7357 49.4054 52.8662C44.6804 53.4655 39.8059 54.1067 35.2309 55.4035C34.2559 55.6847 33.2054 55.1057 32.9054 54.1097C32.6054 53.1145 33.2056 52.0772 34.1806 51.7952Z" fill="#E04F16"/>
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M19.6312 32.698C27.3562 24.8147 36.0562 17.9462 43.6312 9.85147C44.3062 9.09547 45.5062 9.05497 46.2562 9.76072C47.0062 10.4672 47.0809 11.6552 46.3309 12.4112C38.7559 20.5292 30.0559 27.4202 22.3309 35.3267C21.5809 36.0647 20.3812 36.0752 19.6312 35.3492C18.9562 34.624 18.8812 33.436 19.6312 32.698Z" fill="#E04F16"/>
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M5.15443 2.37623C4.92943 6.88823 4.70487 11.4002 4.47987 15.913C4.47987 16.9465 3.57943 17.7445 2.52943 17.6942C1.47943 17.6432 0.729874 16.7635 0.729874 15.7292C0.954874 11.2097 1.17943 6.69098 1.40443 2.17223C1.47943 1.13873 2.37958 0.345982 3.42958 0.402232C4.40458 0.458482 5.22943 1.34348 5.15443 2.37623Z" fill="#E04F16"/>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
-                            <p className="text-[20px] text-[#535862] leading-[30px] text-center w-full">
-                                Experience flawless interactions across real-world scenarios.
+                            <p className="text-[24px] text-[#535862] leading-[150%] text-center w-full">
+                                Seamless conversations, built for every real-world moment
                             </p>
                         </div>
                         
@@ -347,47 +509,107 @@ export default function GuidedReachPage() {
                         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
                             {/* Banking Mobile Experience Card */}
                             <div className="bg-secondary border border-secondary rounded-xl p-6 flex flex-col h-full">
-                                <div className="aspect-video bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-4 flex items-center justify-center">
-                                    <div className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm">
-                                        <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M8 5v14l11-7z"/>
-                                        </svg>
-                                    </div>
+                                <div className="aspect-[5/4] bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-8 flex items-center justify-center relative overflow-hidden group">
+                                    <img 
+                                        src="/banking-demo.png" 
+                                        alt="Banking mobile experience demo" 
+                                        className="absolute inset-0 w-full h-full object-cover object-top rounded-lg"
+                                    />
+                                    <button 
+                                        onClick={() => handleAudioPlay('banking-demo')}
+                                        className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm hover:bg-brand-solid_hover transition-colors relative z-10 opacity-75 group-hover:opacity-100"
+                                    >
+                                        {playingAudio === 'banking-demo' ? (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="6" y="4" width="4" height="16"/>
+                                                <rect x="14" y="4" width="4" height="16"/>
+                                            </svg>
+                                        ) : (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M8 5v14l11-7z"/>
+                                            </svg>
+                                        )}
+                                    </button>
                                 </div>
-                                <h3 className="text-lg font-semibold text-primary mb-2">Banking mobile experience</h3>
-                                <p className="text-md text-tertiary">
-                                    See how Kai handles account inquiries, balance checks, and transaction support with natural conversation flow.
+                                <h3 className="text-[24px] font-semibold text-primary mb-2 leading-[32px]">Banking mobile experience</h3>
+                                <p className="text-[20px] text-tertiary leading-[30px]">
+                                    See how KAi handles account inquiries, balance checks, and transaction support with natural conversation flow.
                                 </p>
+                                <audio 
+                                    id="banking-demo" 
+                                    src="/banking-demo.wav" 
+                                    onEnded={() => setPlayingAudio(null)}
+                                />
                             </div>
 
                             {/* Healthcare Appointments Card */}
                             <div className="bg-secondary border border-secondary rounded-xl p-6 flex flex-col h-full">
-                                <div className="aspect-video bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-4 flex items-center justify-center">
-                                    <div className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm">
-                                        <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M8 5v14l11-7z"/>
-                                        </svg>
-                                    </div>
+                                <div className="aspect-[5/4] bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-8 flex items-center justify-center relative overflow-hidden group">
+                                    <img 
+                                        src="/healthcare-demo.png" 
+                                        alt="Healthcare appointments demo" 
+                                        className="absolute inset-0 w-full h-full object-cover object-top rounded-lg"
+                                    />
+                                    <button 
+                                        onClick={() => handleAudioPlay('retail-demo')}
+                                        className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm hover:bg-brand-solid_hover transition-colors relative z-10 opacity-75 group-hover:opacity-100"
+                                    >
+                                        {playingAudio === 'retail-demo' ? (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="6" y="4" width="4" height="16"/>
+                                                <rect x="14" y="4" width="4" height="16"/>
+                                            </svg>
+                                        ) : (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M8 5v14l11-7z"/>
+                                            </svg>
+                                        )}
+                                    </button>
                                 </div>
-                                <h3 className="text-lg font-semibold text-primary mb-2">Healthcare appointments</h3>
-                                <p className="text-md text-tertiary">
+                                <h3 className="text-[24px] font-semibold text-primary mb-2 leading-[32px]">Healthcare appointments</h3>
+                                <p className="text-[20px] text-tertiary leading-[30px]">
                                     Experience seamless appointment scheduling, rescheduling, and patient support with intelligent handoffs.
                                 </p>
+                                <audio 
+                                    id="retail-demo" 
+                                    src="/retail-demo.wav" 
+                                    onEnded={() => setPlayingAudio(null)}
+                                />
                             </div>
 
                             {/* Customer Service Card */}
                             <div className="bg-secondary border border-secondary rounded-xl p-6 flex flex-col h-full">
-                                <div className="aspect-video bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-4 flex items-center justify-center">
-                                    <div className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm">
-                                        <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M8 5v14l11-7z"/>
-                                        </svg>
-                                    </div>
+                                <div className="aspect-[5/4] bg-gradient-to-br from-brand-50 to-brand-100 rounded-lg mb-8 flex items-center justify-center relative overflow-hidden group">
+                                    <img 
+                                        src="/customer-service-demo.png" 
+                                        alt="Customer service demo" 
+                                        className="absolute inset-0 w-full h-full object-cover object-top rounded-lg"
+                                    />
+                                    <button 
+                                        onClick={() => handleAudioPlay('customer-service-demo')}
+                                        className="size-14 rounded-full bg-brand-solid flex items-center justify-center shadow-sm hover:bg-brand-solid_hover transition-colors relative z-10 opacity-75 group-hover:opacity-100"
+                                    >
+                                        {playingAudio === 'customer-service-demo' ? (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="6" y="4" width="4" height="16"/>
+                                                <rect x="14" y="4" width="4" height="16"/>
+                                            </svg>
+                                        ) : (
+                                            <svg className="size-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M8 5v14l11-7z"/>
+                                            </svg>
+                                        )}
+                                    </button>
                                 </div>
-                                <h3 className="text-lg font-semibold text-primary mb-2">Customer service</h3>
-                                <p className="text-md text-tertiary">
-                                    Watch Kai resolve complex customer issues with context awareness and smooth agent handoffs.
+                                <h3 className="text-[24px] font-semibold text-primary mb-2 leading-[32px]">Customer service</h3>
+                                <p className="text-[20px] text-tertiary leading-[30px]">
+                                    Watch KAi resolve complex customer issues with context awareness and smooth agent handoffs.
                                 </p>
+                                <audio 
+                                    id="customer-service-demo" 
+                                    src="/customer-service-demo.wav" 
+                                    onEnded={() => setPlayingAudio(null)}
+                                />
                             </div>
                         </div>
                     </div>
@@ -395,130 +617,136 @@ export default function GuidedReachPage() {
             </section>
 
             {/* Features Section - "Designed to make a difference" */}
-            <section className="bg-gradient-to-b from-white via-brand-50/80 to-white px-0 py-24">
+            <section className="px-0 py-[120px] [background:linear-gradient(26.5deg,#772917,#772917)]">
                 <div className="mx-auto max-w-[1280px] px-8">
                     <div className="flex flex-col gap-12 items-center mb-16">
                         <div className="flex flex-col gap-5 items-center max-w-[768px] text-center">
-                            <h2 className="text-[36px] font-semibold text-primary tracking-[-0.72px] leading-[44px]">
-                                Designed to make a difference
-                            </h2>
-                            <p className="text-[20px] text-tertiary leading-[30px]">
-                                We pride ourselves on our ability to challenge core assumptions, unpick legacy behaviors, and streamline complex processes.
-                            </p>
+                              <h2 className="text-[60px] font-semibold text-white tracking-[-1.2px] leading-[72px]">
+                                  Made to elevate every
+                                  <span className="relative">
+                                      {" "}experience
+                                      <div className="absolute -bottom-4 left-0 w-full h-[12px] z-10">
+                                          <img 
+                                              src="/Underline_01.svg" 
+                                              alt="" 
+                                              className="w-full h-full object-contain"
+                                          />
+                                      </div>
+                                  </span>
+                              </h2>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-8 items-start">
+                    <div className="flex flex-wrap gap-12 items-start">
                         <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
                                 <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <circle cx="12" cy="12" r="6"/>
+                                        <circle cx="12" cy="12" r="2"/>
                                     </svg>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Increase revenue
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Increase Revenue
                                 </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Grow your revenue as satisfied customers become loyal advocates.
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Boost growth as happy customers become repeat buyers and brand advocates.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
                                 <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22,4 12,14.01 9,11.01"/>
                                     </svg>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Enhance customer satisfaction
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Enhance Satisfaction
                                 </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Feel the satisfaction of exceeding customer expectations consistently.
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Exceed expectations and deliver consistently positive experiences.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
                                 <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Reduce Costs
+                                </h3>
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Free up resources by automating routine tasks.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
+                                <div className="absolute inset-3">
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Accelerate Response
+                                </h3>
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Earn trust with instant, reliable solutions.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
+                                <div className="absolute inset-3">
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M3 3v18h18"/>
                                         <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
                                     </svg>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Reduce costs
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Scale Seamlessly
                                 </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Imagine reallocating resources to what truly matters as routine tasks handle themselves.
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Expand with ease, confident your systems adapt to demand.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
+                            <div className="bg-brand-solid relative rounded-full size-12 shadow-sm">
                                 <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="12" cy="12" r="10"/>
-                                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                                        <line x1="9" y1="9" x2="9.01" y2="9"/>
-                                        <line x1="15" y1="9" x2="15.01" y2="9"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Reduce response time
-                                </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Delight customers with instant solutions, enhancing their trust in your brand.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
-                                <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="9" y1="9" x2="15" y2="15"/>
-                                        <line x1="15" y1="9" x2="9" y2="15"/>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Scale seamlessly
-                                </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Grow confidently, knowing your business scales effortlessly with demand.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-4 items-center min-w-[320px] flex-1">
-                            <div className="bg-white relative rounded-[10px] size-12 border border-secondary shadow-sm">
-                                <div className="absolute inset-3">
-                                    <svg className="size-6 text-quaternary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <svg className="size-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                                     </svg>
                                 </div>
                             </div>
-                            <div className="flex flex-col gap-1 items-center text-center">
-                                <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                    Build customer loyalty
+                            <div className="flex flex-col gap-2 items-center text-center">
+                                <h3 className="text-[24px] font-semibold text-white leading-[32px]">
+                                    Build Loyalty
                                 </h3>
-                                <p className="text-[18px] text-tertiary leading-[28px]">
-                                    Experience the rewards of customers returning time and again.
+                                <p className="text-[20px] text-white/80 leading-[30px]">
+                                    Keep customers coming back with experiences that last.
                                 </p>
                             </div>
                         </div>
@@ -527,24 +755,25 @@ export default function GuidedReachPage() {
             </section>
 
             {/* Why companies choose KAi section */}
-            <section className="bg-primary px-0 py-24">
+            <section className="bg-primary px-0 py-[120px]">
                 <div className="mx-auto max-w-[1280px] px-[32px]">
                     <div className="flex flex-col gap-16 md:flex-row md:items-start">
                         {/* Left side - Heading and supporting text */}
-                        <div className="flex flex-col gap-5 max-w-[360px]">
+                        <div className="flex flex-col gap-5 max-w-[450px]">
                             <div className="flex flex-col gap-5">
-                                <h2 className="text-[48px] font-semibold text-primary tracking-[-0.96px] leading-[60px]">
-                                    Why companies choose KAi
-                                </h2>
+                                 <h2 className="text-[60px] font-semibold text-primary tracking-[-1.2px] leading-[72px]">
+                                     Why companies choose <span className="text-[#e04f16]">KAi</span>
+                                 </h2>
                             </div>
-                            <p className="text-[20px] text-tertiary leading-[30px]">
-                                Powerful, self-serve product and growth analytics to help you convert, engage, and retain more users.
+                            <p className="text-[24px] text-tertiary leading-[150%]">
+                                Built on telephony know-how, powered by AI precision.
                             </p>
                             <div className="flex gap-3">
                                 <Button
-                                    color="secondary" 
+                                    color="primary" 
                                     size="lg"
                                     iconTrailing={ArrowRight}
+                                    href="/pricing"
                                 >
                                     Talk to sales
                                 </Button>
@@ -552,447 +781,164 @@ export default function GuidedReachPage() {
                         </div>
 
                         {/* Right side - Features */}
-                        <div className="flex flex-col gap-16 flex-1">
+                        <div className="flex flex-col gap-12 flex-1">
                             {/* Feature 1: Rely on experts */}
+                            <div className="relative">
                             <div className="flex gap-4 items-start">
                                 <div className="flex-shrink-0">
-                                    <FeaturedIcon 
-                                        size="lg" 
-                                        theme="light" 
-                                        color="gray"
-                                        icon={Users01}
-                                    />
+                                        <Users01 className="size-[26px] text-black" />
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-4">
                                     <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
-                                        Rely on experts
+                                        Trusted Expertise
                                     </h3>
-                                    <p className="text-[16px] text-tertiary leading-[24px]">
-                                        Work alongside our dedicated team who've helped over 500 brands embrace AI successfully.
-                                    </p>
+                                    </div>
                                 </div>
+                                 <p className="text-[20px] text-tertiary leading-[30px] mt-4">
+                                     Work with a team experienced in building and deploying large-scale contact center and telephony solutions for decades.
+                                 </p>
                             </div>
 
                             {/* Feature 2: Data security */}
+                            <div className="relative">
                             <div className="flex gap-4 items-start">
                                 <div className="flex-shrink-0">
-                                    <FeaturedIcon 
-                                        size="lg" 
-                                        theme="light" 
-                                        color="gray"
-                                        icon={Lock02}
-                                    />
+                                        <Lock02 className="size-[26px] text-black" />
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-4">
                                     <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
-                                        Data security
+                                        Data Security
                                     </h3>
-                                    <p className="text-[16px] text-tertiary leading-[24px]">
-                                        Keep your data safe with strong, enterprise-level protection. KAi is GDPR and SOC 2 compliant. You can trust that your information is secure, giving you peace of mind.
-                                    </p>
+                                    </div>
                                 </div>
+                                 <p className="text-[20px] text-tertiary leading-[30px] mt-4">
+                                     Your data stays protected with enterprise-grade safeguards. KAi is GDPR and SOC 2 compliant, ensuring peace of mind.
+                                 </p>
                             </div>
 
                             {/* Feature 3: Guaranteed accuracy */}
+                            <div className="relative">
                             <div className="flex gap-4 items-start">
                                 <div className="flex-shrink-0">
-                                    <FeaturedIcon 
-                                        size="lg" 
-                                        theme="light" 
-                                        color="gray"
-                                        icon={Check}
-                                    />
+                                        <Check className="size-[26px] text-black" />
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-4">
                                     <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
-                                        Guaranteed accuracy
+                                        Proven Accuracy
                                     </h3>
-                                    <p className="text-[16px] text-tertiary leading-[24px]">
-                                        Experience AI that speaks like a human but acts with the precision of your best agent, following your workflows exactly to deliver accurate results every time.
-                                    </p>
+                                    </div>
                                 </div>
+                                 <p className="text-[20px] text-tertiary leading-[30px] mt-4">
+                                     AI that sounds human but executes with precision—aligned to your workflows for consistent results.
+                                 </p>
                             </div>
 
                             {/* Feature 4: Full control */}
+                            <div className="relative">
                             <div className="flex gap-4 items-start">
                                 <div className="flex-shrink-0">
-                                    <FeaturedIcon 
-                                        size="lg" 
-                                        theme="light" 
-                                        color="gray"
-                                        icon={Settings01}
-                                    />
+                                        <Settings01 className="size-[26px] text-black" />
+                                    </div>
+                                    <div className="flex flex-col gap-4">
+                                        <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
+                                            Complete Control
+                                        </h3>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
-                                        Full control
-                                    </h3>
-                                    <p className="text-[16px] text-tertiary leading-[24px]">
-                                        Take charge of your AI with complete visibility into its actions. You can monitor, adjust, and understand everything it does, with clear reports to keep you informed.
-                                    </p>
-                                </div>
+                                 <p className="text-[20px] text-tertiary leading-[30px] mt-4">
+                                     Maintain full visibility and oversight with clear reporting and the ability to monitor and adjust anytime.
+                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Industry grid */}
-            <section className="bg-primary px-0 py-24">
-                <div className="mx-auto max-w-container px-8">
-                    <div className="flex flex-col max-w-[768px]">
-                        <div className="flex flex-col gap-2 md:gap-3">
-                            <h2 className="text-display-md font-semibold text-primary tracking-tight">Support for every use case</h2>
-                        </div>
-                        <p className="text-xl text-tertiary mt-3 md:mt-4">Automate high-volume calls across sectors. Launch fast. Scale safely with analytics, guardrails, and multilingual support.</p>
-                    </div>
-
-                    <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                        <div className="bg-secondary border border-secondary rounded-lg p-6 flex h-full min-h-[280px] flex-col text-left">
-                            <div className="size-12 rounded-[10px] bg-brand-solid flex items-center justify-center mb-16">
-                                <MedicalCross className="size-6 text-white" />
-                            </div>
-                            <div className="text-lg font-semibold text-primary mb-2">Healthcare</div>
-                            <div className="text-md text-tertiary mb-4">Book and change appointments, refills, directions, and triage. HIPAA-ready with BAA.</div>
-                            <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="mt-auto">Learn more</Button>
-                        </div>
-
-                        <div className="bg-secondary border border-secondary rounded-lg p-6 flex h-full min-h-[280px] flex-col text-left">
-                            <div className="size-12 rounded-[10px] bg-brand-solid flex items-center justify-center mb-16">
-                                <GraduationHat02 className="size-6 text-white" />
-                            </div>
-                            <div className="text-lg font-semibold text-primary mb-2">Education</div>
-                            <div className="text-md text-tertiary mb-4">Answer admissions and aid questions, route to departments, and handle IT help desk. Multilingual.</div>
-                            <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="mt-auto">Learn more</Button>
-                        </div>
-
-                        <div className="bg-secondary border border-secondary rounded-lg p-6 flex h-full min-h-[280px] flex-col text-left">
-                            <div className="size-12 rounded-[10px] bg-brand-solid flex items-center justify-center mb-16">
-                                <Globe02 className="size-6 text-white" />
-                            </div>
-                            <div className="text-lg font-semibold text-primary mb-2">Public sector</div>
-                            <div className="text-md text-tertiary mb-4">Automate benefits, permits, 311/211 hotlines, and appointments—secure and multilingual.</div>
-                            <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="mt-auto">Learn more</Button>
-                        </div>
-
-                        <div className="bg-secondary border border-secondary rounded-lg p-6 flex h-full min-h-[280px] flex-col text-left">
-                            <div className="size-12 rounded-[10px] bg-brand-solid flex items-center justify-center mb-16">
-                                <Tag03 className="size-6 text-white" />
-                            </div>
-                            <div className="text-lg font-semibold text-primary mb-2">Customer service</div>
-                            <div className="text-md text-tertiary mb-4">Track orders, returns, and store info. Capture leads and schedule follow-ups when agents are busy.</div>
-                            <Button color="link-color" size="lg" iconTrailing={ArrowRight} className="mt-auto">Learn more</Button>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
 
-            {/* Integrations section */}
-            <section className="bg-primary px-0 py-24 overflow-clip">
-                <div className="mx-auto max-w-container px-8">
-                    <div className="flex flex-col gap-8 items-center">
-                        {/* Header */}
-                        <div className="flex flex-col gap-5 items-center text-center max-w-[768px]">
-                            <div className="flex flex-col gap-3 items-center w-full">
-                                <div className="text-secondary text-md font-semibold w-full">
-                                    Integrations
-                                </div>
-                                <h2 className="text-display-md font-semibold text-primary tracking-tight w-full">
-                                    Get more value from your tools
-                                </h2>
-                            </div>
-                            <p className="text-xl text-tertiary font-normal">
-                                Connect your tools, connect your teams. With over 100 apps already available in our directory, your team's favourite tools are just a click away.
+
+
+
+
+            {/* Blog Section */}
+            <section className="bg-white px-0 py-24">
+                <div className="mx-auto max-w-[1280px] px-8">
+                    <div className="flex flex-col gap-8 items-start mb-16">
+                        <div className="flex flex-col gap-5 items-start max-w-[768px]">
+                            <h2 className="text-[60px] font-semibold text-primary tracking-[-1.2px] leading-[72px]">
+                                The latest from <span className="text-[#e04f16]">KAi</span>
+                            </h2>
+                            <p className="text-[24px] text-tertiary leading-[150%]">
+                                Interviews, tips, guides, industry best practices, and news.
                             </p>
                         </div>
                     </div>
                     
-                    {/* Integration cards grid */}
-                    <div className="mt-16 flex flex-wrap gap-8 items-start w-full">
-                        {/* Outlook integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative">
-                                        <div className="absolute inset-[6.25%]">
-                                            <img className="w-full h-full object-contain" src="/integration-logos/outlook.svg" alt="Outlook" />
-                                        </div>
-                                    </div>
+                    <div className="flex flex-col gap-8">
+                        <div className="flex gap-8 items-start">
+                            {/* Blog Post 1 */}
+                            <div className="flex flex-col gap-4 items-start flex-1 min-w-0">
+                                <div className="aspect-[384/256] relative w-full">
+                                    <img 
+                                        alt="The Complete Guide to Voice Automation for Business" 
+                                        className="absolute inset-0 w-full h-full object-cover rounded-lg" 
+                                        src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=640&h=640&fit=crop" 
+                                    />
                                 </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Outlook integration
+                                <div className="flex flex-col gap-4 items-start w-full">
+                                    <div className="flex flex-col gap-4 items-start w-full">
+                                        <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
+                                            The Complete Guide to Voice Automation for Business
                                         </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Notion, right in the app.
+                                        <p className="text-[20px] text-tertiary leading-[30px] line-clamp-2">
+                                            How AI-powered voice assistants are transforming customer service and reducing costs
                                         </p>
                                     </div>
+                                    <Button color="primary" size="lg" href="/blog-post/voice-automation-guide">
+                                        Read more
+                                    </Button>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Slack integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative">
-                                        <div className="absolute inset-[9.375%]">
-                                            <img className="w-full h-full object-contain" src="/integration-logos/slack.svg" alt="Slack" />
-                                        </div>
-                                    </div>
+                            {/* Blog Post 2 */}
+                            <div className="flex flex-col gap-4 items-start flex-1 min-w-0">
+                                <div className="aspect-[384/256] relative w-full">
+                                    <img 
+                                        alt="AI Customer Service Trends: What to Expect in 2025" 
+                                        className="absolute inset-0 w-full h-full object-cover rounded-lg" 
+                                        src="https://images.unsplash.com/photo-1677442136019-21780ecad995?w=640&h=640&fit=crop" 
+                                    />
                                 </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Slack integration
+                                <div className="flex flex-col gap-4 items-start w-full">
+                                    <div className="flex flex-col gap-4 items-start w-full">
+                                        <h3 className="text-[24px] font-semibold text-primary leading-[32px]">
+                                            AI Customer Service Trends: What to Expect in 2025
                                         </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Slack, right in the app.
+                                        <p className="text-[20px] text-tertiary leading-[30px] line-clamp-2">
+                                            The future of customer support is conversational, intelligent, and automated
                                         </p>
                                     </div>
+                                    <Button color="primary" size="lg" href="/blog-post/ai-customer-service-trends">
+                                        Read more
+                                    </Button>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Google Drive integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative">
-                                        <div className="absolute inset-[6.25%]">
-                                            <img className="w-full h-full object-contain" src="/integration-logos/g-calendar.svg" alt="Google Calendar" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Google Calendar integration
-                                        </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Google Calendar, right in the app.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Microsoft Teams integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative">
-                                        <div className="absolute bottom-[6.25%] left-0 right-0 top-0">
-                                            <img className="w-full h-full object-contain" src="/integration-logos/teams.svg" alt="Microsoft Teams" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Microsoft Teams integration
-                                        </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Intercom, right in the app.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Twilio integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative">
-                                        <div className="absolute inset-[6.25%]">
-                                            <img className="w-full h-full object-contain" src="/integration-logos/twilio.svg" alt="Twilio" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Twilio integration
-                                        </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Twilio, right in the app.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Dropbox integration */}
-                        <div className="basis-0 grow min-w-80 pt-6">
-                            <div className="bg-secondary rounded-2xl pt-[52px] pb-8 px-6 relative">
-                                <div className="absolute left-1/2 top-[-32px] transform -translate-x-1/2 bg-white p-1 rounded-xl border border-primary shadow-xs">
-                                    <div className="w-14 h-14 overflow-clip relative shadow-sm">
-                                        <div className="absolute inset-[6.25%]">
-                                            <div className="w-full h-full bg-[#0061ff] rounded-lg flex items-center justify-center">
-                                                <span className="text-white font-bold text-xl">D</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-4 items-center text-center w-[336px]">
-                                    <div className="flex flex-col gap-1 items-center w-full">
-                                        <h3 className="text-lg font-semibold text-primary">
-                                            Dropbox integration
-                                        </h3>
-                                        <p className="text-md text-tertiary font-normal">
-                                            Work faster and smarter by integrating directly with Dropbox, right in the app.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
             </section>
-
-
-            {/* Features Section - "Designed to make a difference" */}
-            <section className="bg-[#fafafa] py-24">
-                <div className="mx-auto max-w-[1280px] px-8">
-                    <div className="flex flex-col gap-12 items-start w-full">
-                        <div className="flex flex-col gap-5 items-start max-w-[768px] w-full">
-                            <div className="flex flex-col gap-3 items-start w-[808px]">
-                                <h2 className="text-[36px] font-semibold text-[#181d27] tracking-[-0.72px] leading-[44px] w-full">
-                                    Designed to make a difference
-                                </h2>
-                                <div className="flex justify-end w-full">
-                                    <img src="/misc/Hand-drawn pen scribble.svg" alt="Scribble" className="block" style={{ filter: 'none' }} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="mt-16 flex flex-wrap gap-8 items-start w-full">
-                        {/* Feature 1: Increase revenue */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={MessageChatCircle}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Increase revenue
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Grow your revenue as satisfied customers become loyal advocates.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 2: Enhance customer satisfaction */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={Zap}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Enhance customer satisfaction
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Feel the satisfaction of exceeding customer expectations consistently.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 3: Reduce costs */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={ChartBreakoutSquare}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Reduce costs
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Imagine reallocating resources to what truly matters as routine tasks handle themselves.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 4: Reduce response time */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={MessageSmileCircle}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Reduce response time
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Delight customers with instant solutions, enhancing their trust in your brand.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 5: Scale seamlessly */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={Command}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Scale seamlessly
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Grow confidently, knowing your business scales effortlessly with demand.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Feature 6: Build customer loyalty */}
-                        <div className="flex flex-col gap-4 items-start min-w-[320px] flex-1">
-                            <FeaturedIcon 
-                                size="lg" 
-                                theme="modern" 
-                                color="gray"
-                                icon={MessageHeartCircle}
-                            />
-                            <div className="flex flex-col gap-1 items-start w-full">
-                                <h3 className="text-lg font-semibold text-[#181d27] leading-[28px] w-full">
-                                    Build customer loyalty
-                                </h3>
-                                <p className="text-md text-[#535862] leading-[24px] w-full">
-                                    Experience the rewards of customers returning time and again, thanks to the service you provide.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
 
             {/* CTA Section */}
             <section className="bg-primary flex flex-col gap-16 items-center justify-start overflow-hidden pb-0 pt-24 px-0 relative shrink-0 w-full">
                 <div className="flex flex-col gap-8 items-start justify-start max-w-[1280px] px-8 py-0 relative shrink-0 w-full">
                     <div className="flex flex-col gap-8 items-center justify-start p-0 relative shrink-0 w-full">
                         <div className="flex flex-col gap-5 items-center justify-start leading-[0] max-w-[768px] not-italic p-0 relative shrink-0 text-center w-full">
-                            <h2 className="font-semibold relative shrink-0 text-primary text-[36px] tracking-[-0.72px] w-full leading-[44px]">
-                                Lead every response with confidence.
+                             <h2 className="font-semibold relative shrink-0 text-primary text-[60px] tracking-[-1.2px] w-full leading-[72px]">
+                                Every call, answered better.
                             </h2>
                             <p className="font-normal relative shrink-0 text-tertiary text-[20px] w-full leading-[30px]">
-                                Experience faster, smarter case management that powers real-world impact.
+                                Start scaling smarter with KAi.
                             </p>
                         </div>
 
@@ -1001,14 +947,15 @@ export default function GuidedReachPage() {
                                 color="secondary" 
                                 size="lg"
                                 iconTrailing={ArrowRight}
+                                href="/pricing"
                             >
-                                Schedule a demo
+                                See pricing
                             </Button>
                             <Button
                                 color="primary" 
                                 size="lg"
                                 iconTrailing={ArrowRight}
-                                href="/about#contact"
+                                href="/pricing"
                             >
                                 Contact sales
                             </Button>
@@ -1024,44 +971,6 @@ export default function GuidedReachPage() {
 
 
 
-            {/* Footer - reuse site footer styles */}
-            <footer className="bg-secondary px-8 py-16">
-                <div className="mx-auto max-w-7xl">
-                    <div className="flex flex-col gap-12">
-                        <div className="flex flex-wrap items-start justify-between gap-12">
-                            <div className="flex flex-col gap-8 min-w-[560px]">
-                                <div className="flex items-center gap-2">
-                                    <a href="/" className="hover:opacity-80 transition-opacity">
-                                        {/* Logo from site foundations */}
-                                        <span className="text-lg font-semibold text-primary">Guided Bot</span>
-                                    </a>
-                                </div>
-                                <div className="flex items-center gap-8">
-                                    <Button color="link-gray" size="lg" href="/features">Features</Button>
-                                    <Button color="link-gray" size="lg" href="/blog">Blog</Button>
-                                    <Button color="link-gray" size="lg" href="/about">About</Button>
-                                    <Button color="link-gray" size="lg" href="/help">Help</Button>
-                                    <Button color="link-gray" size="lg" href="/privacy">Privacy</Button>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-4 w-[360px]">
-                                <div className="text-sm font-semibold text-primary">Stay up to date</div>
-                                <div className="flex gap-4">
-                                    <input
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        className="flex-1 px-3.5 py-2.5 rounded-lg border border-primary bg-primary text-md text-tertiary placeholder:text-placeholder"
-                                    />
-                                    <Button color="primary" size="lg">Subscribe</Button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-8 border-t border-secondary">
-                            <div className="text-md text-quaternary">© 2025 Guided Reach. All rights reserved.</div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }

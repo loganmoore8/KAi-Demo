@@ -77,16 +77,16 @@ export const AboutScreen = () => {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative px-0 py-24">
+      <section className="relative px-0 pt-24 pb-0">
         <div className="absolute inset-0 bg-gradient-to-b from-[#fef6ee] to-white -mb-24"></div>
         <div className="relative z-10">
           <div className="mx-auto max-w-[1280px] px-8">
             <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
               <h1 className="text-[48px] font-semibold text-[#772917] tracking-[-0.96px] leading-[56px] mb-6">
-                Our mission is to make voice automation accessible to every business
+Our mission is to make voice automation accessible to every business
               </h1>
               <p className="text-[20px] text-[#ba3a14] leading-[30px] mb-8">
-                Kai empowers businesses to automate customer interactions with intelligent voice AI—reducing costs, improving response times, and delivering exceptional customer experiences.
+Kai helps companies automate customer interactions with voice AI—cutting costs, speeding response, and elevating experiences.
               </p>
             </div>
           </div>
@@ -104,10 +104,10 @@ export const AboutScreen = () => {
           <div className="flex gap-8 items-start justify-between p-0 relative w-full">
             <div className="flex flex-col gap-5 grow items-start justify-start leading-[0] max-w-[768px] min-w-[480px] not-italic p-0 relative text-left">
               <div className="relative text-primary text-[36px] tracking-[-0.72px] w-full font-semibold">
-                <p className="block leading-[44px]">We're led by AI and automation experts</p>
+                <p className="block leading-[44px]">We're led by CX experts</p>
               </div>
               <div className="font-normal relative text-tertiary text-[20px] w-full">
-                <p className="block leading-[30px]">Decades of experience in voice technology, AI, and customer experience innovation power everything we build.</p>
+                <p className="block leading-[30px]">Decades of experience in telephony and customer experience innovation power everything we build.</p>
               </div>
             </div>
           </div>
@@ -121,18 +121,9 @@ export const AboutScreen = () => {
                  {/* Team Member Cards */}
               {[
                 {
-                  name: "Donald Rich Jr.",
-                  role: "Head of Product",
-                  description: "Product leader with 15+ years building customer-facing AI solutions. Former Amazon Connect product manager who scaled voice automation for enterprise customers.",
-                  image: "/images/donald-rich.png",
-                  scale: 1.12,
-                  objectPosition: "top",
-                  href: "https://www.linkedin.com/in/donaldrichjr/"
-                },
-                {
                   name: "Tim Gabriel",
-                  role: "VP of Engineering",
-                  description: "25-year tech veteran who built Amazon Connect's Public Sector at AWS. Leads our secure, AI-powered voice automation platform architecture.",
+                  role: "Chief Technology Officer",
+                  description: "25+ years in tech; built AWS's Amazon Connect Public Sector team and led financial institution initiatives modernizing contact centers.",
                   image: "/images/tim-gabriel.png",
                   scale: 1.08,
                   objectPosition: "top",
@@ -140,10 +131,19 @@ export const AboutScreen = () => {
                   href: "https://www.linkedin.com/in/timgabriel/"
                 },
                 {
-                  name: "Logan Moore",
-                  role: "Customer Success Director",
-                  description: "Customer experience expert who helps businesses implement voice AI solutions. Specializes in onboarding, training, and optimizing AI performance for maximum ROI.",
-                  image: "/images/logan-moore.png",
+                  name: "Donald Rich Jr.",
+                  role: "Chief Growth Officer",
+                  description: "20+ years in tech and cloud; drove Amazon Connect adoption at AWS and led migrations and AI contact center projects.",
+                  image: "/images/donald-rich.png",
+                  scale: 1.12,
+                  objectPosition: "top",
+                  href: "https://www.linkedin.com/in/donaldrichjr/"
+                },
+                {
+                  name: "Joe Ramos",
+                  role: "Chief Strategy Officer",
+                  description: "Expert in financial crime prevention and public safety; former VP/BSA Officer, led global telephony rollouts, and partnered with FINCEN and the FBI.",
+                  image: "/images/joe-ramos.png",
                   scale: 1.12,
                   objectPosition: "top",
                   offsetY: 0
@@ -207,21 +207,6 @@ export const AboutScreen = () => {
                </div>
              </div>
              
-             {/* Navigation Arrows */}
-            <div className="flex gap-8 items-start justify-start p-0 relative">
-              <button 
-                onClick={() => scrollCarousel(teamCarouselRef, 'left')}
-                className="flex gap-3 items-center justify-center p-0 relative rounded-full size-14 border border-secondary hover:bg-secondary transition-colors"
-              >
-                <ChevronLeft className="size-6 text-quaternary" />
-              </button>
-              <button 
-                onClick={() => scrollCarousel(teamCarouselRef, 'right')}
-                className="flex gap-3 items-center justify-center p-0 relative rounded-full size-14 border border-secondary hover:bg-secondary transition-colors"
-              >
-                <ChevronRight className="size-6 text-quaternary" />
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -382,52 +367,6 @@ export const AboutScreen = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-secondary px-8 py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-12">
-            <div className="flex flex-wrap items-start justify-between gap-12">
-              <div className="flex flex-col gap-8 min-w-[560px]">
-                <div className="flex items-center gap-2">
-                  <a href="/" className="hover:opacity-80 transition-opacity">
-                    <GuidedReachLogo className="h-8" />
-                  </a>
-                </div>
-                
-                                                <div className="flex items-center gap-8">
-                                    <Button color="link-gray" size="lg" href="/features">Features</Button>
-                                    <Button color="link-gray" size="lg" href="/blog">Blog</Button>
-                                    <Button color="link-gray" size="lg" href="/about">About</Button>
-                                    <Button color="link-gray" size="lg" href="/help">Help</Button>
-                                    <Button color="link-gray" size="lg" href="/privacy">Privacy</Button>
-                                </div>
-              </div>
-              
-              <div className="flex flex-col gap-4 w-[360px]">
-                <div className="text-sm font-semibold text-primary">
-                  Stay up to date
-                </div>
-                <div className="flex gap-4">
-                  <input 
-                    type="email" 
-                    placeholder="Enter your email"
-                    className="flex-1 px-3.5 py-2.5 rounded-lg border border-primary bg-primary text-md text-tertiary placeholder:text-placeholder"
-                  />
-                  <Button color="primary" size="lg">
-                    Subscribe
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-8 border-t border-secondary">
-              <div className="text-md text-quaternary">
-                © 2025 Guided Safety. All rights reserved.
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }; 

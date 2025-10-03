@@ -224,88 +224,10 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    {/* Still have questions section */}
-                    <div className="flex flex-col gap-8 items-start max-w-[1280px] mt-16">
-                        <div className="bg-[#fafafa] rounded-2xl p-8 w-full">
-                            <div className="flex flex-col gap-8 items-center">
-                                {/* Avatar group */}
-                                <div className="h-14 w-30 relative">
-                                    <div className="absolute left-0 top-2 size-12 rounded-full overflow-hidden border-[1.5px] border-white">
-                                        <div className="size-full bg-[#e3c6d1] flex items-center justify-center">
-                                            <div className="size-8 bg-gray-300 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                    <div className="absolute left-8 top-0 size-14 rounded-full overflow-hidden border-[1.5px] border-white">
-                                        <div className="size-full bg-[#ddc0ce] flex items-center justify-center">
-                                            <div className="size-10 bg-gray-300 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                    <div className="absolute left-18 top-2 size-12 rounded-full overflow-hidden border-[1.5px] border-white">
-                                        <div className="size-full bg-[#c6d0cb] flex items-center justify-center">
-                                            <div className="size-8 bg-gray-300 rounded-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2 items-center max-w-[768px] text-center">
-                                    <h3 className="text-[20px] font-semibold text-primary leading-[30px]">
-                                        Still have questions?
-                                    </h3>
-                                    <p className="text-[18px] text-tertiary leading-[28px]">
-                                        Can't find the answer you're looking for? Please chat to our friendly team.
-                                    </p>
-                                </div>
-                                
-                                <Button
-                                    color="primary"
-                                    size="lg"
-                                >
-                                    Get in touch
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </section>
 
 
-            {/* Footer */}
-            <footer className="bg-secondary px-8 py-16">
-                <div className="mx-auto max-w-7xl">
-                    <div className="flex flex-col gap-12">
-                        <div className="flex flex-wrap items-start justify-between gap-12">
-                            <div className="flex flex-col gap-8 min-w-[560px]">
-                                <div className="flex items-center gap-2">
-                                    <a href="/" className="hover:opacity-80 transition-opacity">
-                                        <span className="text-lg font-semibold text-primary">Guided Bot</span>
-                                    </a>
-                                </div>
-                                <div className="flex items-center gap-8">
-                                    <Button color="link-gray" size="lg" href="/features">Features</Button>
-                                    <Button color="link-gray" size="lg" href="/blog">Blog</Button>
-                                    <Button color="link-gray" size="lg" href="/about">About</Button>
-                                    <Button color="link-gray" size="lg" href="/help">Help</Button>
-                                    <Button color="link-gray" size="lg" href="/privacy">Privacy</Button>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-4 w-[360px]">
-                                <div className="text-sm font-semibold text-primary">Stay up to date</div>
-                                <div className="flex gap-4">
-                                    <input
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        className="flex-1 px-3.5 py-2.5 rounded-lg border border-primary bg-primary text-md text-tertiary placeholder:text-placeholder"
-                                    />
-                                    <Button color="primary" size="lg">Subscribe</Button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-8 border-t border-secondary">
-                            <div className="text-md text-quaternary">© 2025 Guided Reach. All rights reserved.</div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }

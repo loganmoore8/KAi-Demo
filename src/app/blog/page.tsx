@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/base/buttons/button';
-import { Input } from '@/components/base/input/input';
 import { Header } from '@/components/marketing/header-navigation/components/header';
 import { GuidedReachLogo } from '@/components/foundations/logo/guided-safety-logo';
 import { PaginationPageDefault } from '@/components/application/pagination/pagination';
-import { SearchLg } from '@untitledui/icons';
 import { formatDate } from '@/utils/formatting';
 import { BadgeGroup } from '@/components/base/badges/badge-groups';
 import { Badge } from '@/components/base/badges/badges';
@@ -38,7 +36,6 @@ interface BlogPost {
 export default function BlogPage() {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,34 +67,20 @@ export default function BlogPage() {
     loadBlogPosts();
   }, []);
 
-  // Filter blog posts based on search query
-  const filteredPosts = blogPosts.filter(post => 
-    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.badge.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.author.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   // Pagination logic
   const postsPerPage = 10;
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const totalPages = Math.ceil(blogPosts.length / postsPerPage);
   const startIndex = (currentPage - 1) * postsPerPage;
   const endIndex = startIndex + postsPerPage;
-  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+  const currentPosts = blogPosts.slice(startIndex, endIndex);
 
   return (
     <div className="flex min-h-screen flex-col bg-primary">
       {/* Header Navigation */}
-      <Header 
-        items={[
-          { label: "Features", href: "/features" },
-          { label: "Blog", href: "/blog" },
-          { label: "About", href: "/about" }
-        ]}
-      />
+      <Header />
 
       {/* Hero Section */}
-      <section className="relative px-0 py-24">
+      <section className="relative px-0 pt-24 pb-12">
         <div className="absolute inset-0 bg-gradient-to-b from-[#fef6ee] to-white -mb-24"></div>
         <div className="relative z-10">
           <div className="mx-auto max-w-[1280px] px-8">
@@ -109,17 +92,6 @@ export default function BlogPage() {
                 The latest case studies, technologies, and resources.
               </p>
               
-              {/* Search Bar */}
-              <div className="max-w-[320px] w-full">
-                <Input
-                  placeholder="Search"
-                  icon={SearchLg}
-                  size="md"
-                  className="w-full bg-primary rounded-lg"
-                  value={searchQuery}
-                  onChange={(value) => setSearchQuery(value)}
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -199,10 +171,7 @@ export default function BlogPage() {
             ) : (
               <div className="flex flex-col gap-4 items-center justify-center py-12 text-center">
                 <p className="text-tertiary text-lg font-medium">
-                  No blog posts found matching "{searchQuery}"
-                </p>
-                <p className="text-tertiary text-md">
-                  Try adjusting your search terms or browse all posts.
+                  No blog posts available.
                 </p>
               </div>
             )}
@@ -223,52 +192,6 @@ export default function BlogPage() {
 
 
 
-      {/* Footer */}
-      <footer className="bg-secondary px-8 py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-12">
-            <div className="flex flex-wrap items-start justify-between gap-12">
-              <div className="flex flex-col gap-8 min-w-[560px]">
-                <div className="flex items-center gap-2">
-                  <a href="/" className="hover:opacity-80 transition-opacity">
-                    <GuidedReachLogo className="h-8" />
-                  </a>
-                </div>
-                
-                                                <div className="flex items-center gap-8">
-                                    <Button color="link-gray" size="lg" href="/features">Features</Button>
-                                    <Button color="link-gray" size="lg" href="/blog">Blog</Button>
-                                    <Button color="link-gray" size="lg" href="/about">About</Button>
-                                    <Button color="link-gray" size="lg" href="/help">Help</Button>
-                                    <Button color="link-gray" size="lg" href="/privacy">Privacy</Button>
-                                </div>
-              </div>
-              
-              <div className="flex flex-col gap-4 w-[360px]">
-                <div className="text-sm font-semibold text-primary">
-                  Stay up to date
-                </div>
-                <div className="flex gap-4">
-                  <input 
-                    type="email" 
-                    placeholder="Enter your email"
-                    className="flex-1 px-3.5 py-2.5 rounded-lg border border-primary bg-primary text-md text-tertiary placeholder:text-placeholder"
-                  />
-                  <Button color="primary" size="lg">
-                    Subscribe
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between pt-8 border-t border-secondary">
-              <div className="text-md text-quaternary">
-                © 2025 Guided Safety. All rights reserved.
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 } 
