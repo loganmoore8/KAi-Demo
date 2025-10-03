@@ -104,7 +104,7 @@ export default function ROICalculatorPage() {
                                     <Input
                                         type="number"
                                         value={formData.monthlyCalls.toString()}
-                                        onChange={(e) => handleInputChange('monthlyCalls', parseInt(e.target.value) || 0)}
+                                        onChange={(value) => handleInputChange('monthlyCalls', parseInt(value) || 0)}
                                         placeholder="1000"
                                         className="w-full"
                                     />
@@ -117,7 +117,7 @@ export default function ROICalculatorPage() {
                                     <Input
                                         type="number"
                                         value={formData.avgCallDuration.toString()}
-                                        onChange={(e) => handleInputChange('avgCallDuration', parseInt(e.target.value) || 0)}
+                                        onChange={(value) => handleInputChange('avgCallDuration', parseInt(value) || 0)}
                                         placeholder="5"
                                         className="w-full"
                                     />
@@ -130,7 +130,7 @@ export default function ROICalculatorPage() {
                                     <Input
                                         type="number"
                                         value={formData.agentHourlyRate.toString()}
-                                        onChange={(e) => handleInputChange('agentHourlyRate', parseInt(e.target.value) || 0)}
+                                        onChange={(value) => handleInputChange('agentHourlyRate', parseInt(value) || 0)}
                                         placeholder="25"
                                         className="w-full"
                                     />
@@ -143,7 +143,7 @@ export default function ROICalculatorPage() {
                                     <Input
                                         type="number"
                                         value={formData.currentResolutionRate.toString()}
-                                        onChange={(e) => handleInputChange('currentResolutionRate', parseInt(e.target.value) || 0)}
+                                        onChange={(value) => handleInputChange('currentResolutionRate', parseInt(value) || 0)}
                                         placeholder="70"
                                         className="w-full"
                                     />
@@ -156,7 +156,7 @@ export default function ROICalculatorPage() {
                                     <Input
                                         type="number"
                                         value={formData.kaiResolutionRate.toString()}
-                                        onChange={(e) => handleInputChange('kaiResolutionRate', parseInt(e.target.value) || 0)}
+                                        onChange={(value) => handleInputChange('kaiResolutionRate', parseInt(value) || 0)}
                                         placeholder="85"
                                         className="w-full"
                                     />
